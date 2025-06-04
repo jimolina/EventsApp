@@ -19,10 +19,20 @@ export default function App() {
   const [mapEventTitle, setMapEventTitle] = useState("");
   const [mapEventLat, setMapEventLat] = useState("");
   const [mapEventLng, setMapEventLng] = useState("");
+  
+  const [messageAddEvent, setMessageAddEvent] = useState("");
+  const [messageAddEventType, setMessageAddEventType] = useState("");
+  const [createEvent, setCreateEvent] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    description: '',
+    lat: '',
+    lng: ''
+  });
 
 
   useEffect(() => {
-    fetch('http://localhost:3000/events') 
+    fetch('http://localhost:3000/events')
       .then((res) => {
         if (!res.ok) throw new Error('Error al obtener eventos');
         return res.json();
@@ -49,7 +59,82 @@ export default function App() {
     setMapEventLng("");
   }
 
+  const handleCreateEvent = () => {
+    setCreateEvent(true);
+  }
+
+  const handleCreateEventClose = () => {
+    setCreateEvent(false);
+  }
+
   const mapVisibility = mapEventTitle ? 'opacity-100 scale-100 z-5' : 'opacity-0 scale-95 pointer-events-none';
+
+  const createEventVisibility = createEvent ? 'opacity-100 scale-100 z-5' : 'opacity-0 scale-95';
+
+  const clearMessage = () => {
+    setTimeout(() => {
+      setMessageAddEvent("");
+      setMessageAddEventType("");
+    }, 3000);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewEvent((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    const latNum = parseFloat(newEvent.lat);
+    const lngNum = parseFloat(newEvent.lng);
+
+    if (
+      isNaN(latNum) ||
+      isNaN(lngNum) ||
+      latNum < -90 ||
+      latNum > 90 ||
+      lngNum < -180 ||
+      lngNum > 180
+    ) {
+      setMessageAddEvent('Please enter valid latitude and longitude in decimal (DD) format.');
+      setMessageAddEventType('error');
+      clearMessage();
+      return;
+    }
+
+    fetch('http://localhost:3000/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...newEvent,
+        lat: latNum,
+        lng: lngNum,
+      }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Error creating event');
+        setMessageAddEvent('Error creating event');
+        setMessageAddEventType('error');
+        clearMessage();
+        return res.json();
+      })
+      .then((createdEvent) => {
+        setEvents((prev) => [...prev, createdEvent]);
+        setNewEvent({ title: '', description: '', lat: '', lng: '' });
+        // setCreateEvent(false); // Uncomment if you want to close the form after submission
+        setMessageAddEvent('Event created successfully!');
+        setMessageAddEventType('success');
+        clearMessage();
+      })
+      .catch((err) => alert(err.message));
+  };
+
+  const addEventMessageVisibility = "success" === messageAddEventType ? 'opacity-100 scale-100 bg-green-200/30 border-green-400' : "error" === messageAddEventType ? 'opacity-100 scale-95 bg-red-200/30 border-red-400' : '';
+
 
   return (
     <div className="min-h-screen min-w-[320px] rounded-xl font-mono flex flex-col">
@@ -63,7 +148,8 @@ export default function App() {
           This is a Test from Saltstrong.com as part of the interview process.
         </p>
         <button
-          className="cursor-pointer bg-blue-400 hover:bg-blue-500 p-2 rounded-xl text-white self-end" 
+          className="cursor-pointer bg-blue-400 hover:bg-blue-500 p-2 rounded-xl text-white self-end"
+          onClick={() => handleCreateEvent()}  
         >
           Add Event
         </button>
@@ -120,7 +206,72 @@ export default function App() {
         </div>
         {/* End Map Area */}
         {/* Start Add Event Area */}
-        <div></div>
+        <div className={`add-event-group w-full min-w-[320px] h-full bg-sky-500/30 absolute top-0 left-0 transition-all duration-300 transform p-4 -z-1 ${createEventVisibility}`}>
+          <div className="container mx-auto md:max-w-[70%] h-full bg-white rounded-lg shadow-lg p-4 flex flex-col gap-1 justify-top">
+            <button
+              className="cursor-pointer bg-blue-400 hover:bg-blue-500 px-2 py-1 rounded text-sm text-white self-end"
+              onClick={() => handleCreateEventClose(false)}  
+            >
+              x
+            </button>
+            <div className="add-event-container flex flex-col gap-2">
+              <h2 className="font-bold text-xl">Add Event</h2>
+              <p className="text-sm text-gray-500">Add a new event to the list.</p>
+              <p className={`add-event-message text-[12px] text-center w-80 self-center transition-all duration-300 transform p-4 opacity-0 border rounded-xl ${addEventMessageVisibility}`}>{messageAddEvent}</p>
+
+              <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+                <label>
+                  Title:
+                  <input
+                    type="text"
+                    name="title"
+                    value={newEvent.title}
+                    onChange={handleInputChange}
+                    className="p-2 border rounded w-full"
+                    required
+                  />
+                </label>
+                <label>
+                  Description:
+                  <textarea
+                    name="description"
+                    value={newEvent.description}
+                    onChange={handleInputChange}
+                    className="p-2 border rounded w-full"
+                    required
+                  />
+                </label>
+                <div className="flex flex-row justify-between gap-2">
+                  <label className="w-1/2">
+                    Latitude:
+                    <input
+                      type="number"
+                      name="lat"
+                      value={newEvent.lat}
+                      onChange={handleInputChange}
+                      className="p-2 border rounded w-full"
+                      required
+                    />
+                  </label>
+                  <label className="w-1/2">
+                    Longitude:
+                    <input
+                      type="number"
+                      name="lng"
+                      value={newEvent.lng}
+                      onChange={handleInputChange}
+                      className="p-2 border rounded w-full"
+                      required
+                    />
+                  </label>
+                </div>
+                <button type="submit" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded self-end cursor-pointer">
+                  Create Event
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
         {/* End Add Event Area */}
       </main>
 

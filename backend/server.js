@@ -25,6 +25,43 @@ fastify.get('/events', async (request, reply) => {
   return events
 })
 
+// POST /events
+// This endpoint allows users to create a new event with title, description, latitude, and longitude.
+// It validates the input and ensures latitude and longitude are in the correct range.
+fastify.post('/events', async (request, reply) => {
+  const { title, description, lat, lng } = request.body;
+
+  if (!title || !description || lat === undefined || lng === undefined) {
+    reply.code(400).send({ error: 'Missing required fields' });
+    return;
+  }
+
+  const latNum = parseFloat(lat);
+  const lngNum = parseFloat(lng);
+
+  if (
+    isNaN(latNum) ||
+    isNaN(lngNum) ||
+    latNum < -90 ||
+    latNum > 90 ||
+    lngNum < -180 ||
+    lngNum > 180
+  ) {
+    reply.code(400).send({ error: 'Invalid latitude or longitude values' });
+    return;
+  }
+
+  const newEvent = {
+    title,
+    description,
+    lat: latNum,
+    lng: lngNum
+  };
+
+  const result = await fastify.mongo.db.collection('events_entries').insertOne(newEvent);
+  reply.code(201).send({ ...newEvent, id: result.insertedId });
+})
+
 // Start Server
 const start = async () => {
   try {
