@@ -51,11 +51,15 @@ fastify.post('/events', async (request, reply) => {
     return;
   }
 
+  const now = new Date();
+
   const newEvent = {
     title,
     description,
     lat: latNum,
-    lng: lngNum
+    lng: lngNum,
+    created_at: now,
+    updated_at: now
   };
 
   const result = await fastify.mongo.db.collection('events_entries').insertOne(newEvent);
